@@ -1,4 +1,4 @@
-export type UrgencyLevel = 'critical' | 'medium' | 'safe';
+export type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low' | 'safe';
 export type CategoryType = 'rescue' | 'medical' | 'food' | 'shelter' | 'other';
 
 export interface Incident {

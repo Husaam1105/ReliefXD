@@ -3,14 +3,16 @@ import { motion } from 'motion/react';
 
 interface LiveStatsCardProps {
   criticalCount: number;
+  highCount: number;
   mediumCount: number;
+  lowCount: number;
   safeCount: number;
   aiConfidence: number;
 }
 
-export function LiveStatsCard({ criticalCount, mediumCount, safeCount, aiConfidence }: LiveStatsCardProps) {
+export function LiveStatsCard({ criticalCount, highCount, mediumCount, lowCount, safeCount, aiConfidence }: LiveStatsCardProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 w-full">
       {/* Critical */}
       <motion.div
         className="bg-slate-900/50 border border-red-500/20 rounded-xl p-4 backdrop-blur-sm relative overflow-hidden group"
@@ -36,22 +38,51 @@ export function LiveStatsCard({ criticalCount, mediumCount, safeCount, aiConfide
               {criticalCount}
             </motion.span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Requiring immediate action</p>
+          <p className="text-xs text-slate-400 mt-1">Immediate action</p>
+        </div>
+      </motion.div>
+
+      {/* High */}
+      <motion.div
+        className="bg-slate-900/50 border border-orange-600/20 rounded-xl p-4 backdrop-blur-sm relative overflow-hidden group"
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.2 }}
+      >
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+          <AlertTriangle className="w-16 h-16 text-orange-600" />
+        </div>
+
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 mb-2 text-orange-500">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="text-sm font-medium">High</span>
+          </div>
+          <div className="text-3xl font-bold text-white tabular-nums">
+            <motion.span
+              key={highCount}
+              initial={{ scale: 1.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {highCount}
+            </motion.span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">Serious threat</p>
         </div>
       </motion.div>
 
       {/* Medium */}
       <motion.div
-        className="bg-slate-900/50 border border-orange-500/20 rounded-xl p-4 backdrop-blur-sm relative overflow-hidden group"
+        className="bg-slate-900/50 border border-yellow-500/20 rounded-xl p-4 backdrop-blur-sm relative overflow-hidden group"
         whileHover={{ y: -2 }}
         transition={{ duration: 0.2 }}
       >
         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-          <Activity className="w-16 h-16 text-orange-500" />
+          <Activity className="w-16 h-16 text-yellow-500" />
         </div>
 
         <div className="flex flex-col">
-          <div className="flex items-center gap-2 mb-2 text-orange-400">
+          <div className="flex items-center gap-2 mb-2 text-yellow-400">
             <Activity className="w-5 h-5" />
             <span className="text-sm font-medium">Medium</span>
           </div>
@@ -65,7 +96,36 @@ export function LiveStatsCard({ criticalCount, mediumCount, safeCount, aiConfide
               {mediumCount}
             </motion.span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Monitoring required</p>
+          <p className="text-xs text-slate-400 mt-1">Monitoring</p>
+        </div>
+      </motion.div>
+
+      {/* Low */}
+      <motion.div
+        className="bg-slate-900/50 border border-blue-500/20 rounded-xl p-4 backdrop-blur-sm relative overflow-hidden group"
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.2 }}
+      >
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Activity className="w-16 h-16 text-blue-500" />
+        </div>
+
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 mb-2 text-blue-400">
+            <Activity className="w-5 h-5" />
+            <span className="text-sm font-medium">Low</span>
+          </div>
+          <div className="text-3xl font-bold text-white tabular-nums">
+            <motion.span
+              key={lowCount}
+              initial={{ scale: 1.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {lowCount}
+            </motion.span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">Info only</p>
         </div>
       </motion.div>
 

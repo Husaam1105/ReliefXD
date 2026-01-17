@@ -116,10 +116,15 @@ export function AdminTableView({ incidents, onDelete, onViewOnMap, onViewDetails
                 return (
                     <div className="flex items-center gap-2">
                         {urgency === 'critical' && <AlertTriangle className="w-4 h-4 text-red-500" />}
-                        {urgency === 'medium' && <Activity className="w-4 h-4 text-orange-500" />}
+                        {urgency === 'high' && <AlertTriangle className="w-4 h-4 text-orange-600" />}
+                        {urgency === 'medium' && <Activity className="w-4 h-4 text-yellow-500" />}
+                        {urgency === 'low' && <Activity className="w-4 h-4 text-blue-500" />}
                         {urgency === 'safe' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
                         <span className={`capitalize font-semibold ${urgency === 'critical' ? 'text-red-400' :
-                            urgency === 'medium' ? 'text-orange-400' : 'text-green-400'
+                                urgency === 'high' ? 'text-orange-500' :
+                                    urgency === 'medium' ? 'text-yellow-400' :
+                                        urgency === 'low' ? 'text-blue-400' :
+                                            'text-green-400'
                             }`}>
                             {urgency}
                         </span>

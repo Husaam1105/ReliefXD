@@ -6,216 +6,165 @@ import { AdminTableView } from './components/AdminTableView';
 import { LoginModal } from './components/LoginModal';
 import { Incident, AIAnalysisResult, UrgencyLevel, CategoryType } from './types/incident';
 
+// --- FIREBASE IMPORTS ---
+import { db } from './firebase'; // Import the db instance we created
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  Timestamp,
+  deleteDoc,
+  doc
+} from 'firebase/firestore';
+
 const CURRENT_USER_ID = 'user-1';
 
-// Mock AI analysis function
-const mockAIAnalysis = async (description: string): Promise<AIAnalysisResult> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+/* ================= BACKEND API ================= */
+// Kept exactly as you had it
+const analyzeWithBackend = async (
+  description: string
+): Promise<AIAnalysisResult> => {
+  const res = await fetch('http://localhost:5000/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description }),
+  });
 
-  // Simple keyword-based analysis (mock)
-  const text = description.toLowerCase();
-
-  let urgency: UrgencyLevel = 'safe';
-  let category: CategoryType = 'other';
-  let resources: string[] = [];
-
-  // Determine urgency
-  if (text.includes('critical') || text.includes('dying') || text.includes('emergency') || text.includes('urgent')) {
-    urgency = 'critical';
-  } else if (text.includes('help') || text.includes('need') || text.includes('injured')) {
-    urgency = 'medium';
+  if (!res.ok) {
+    throw new Error('Backend analysis failed');
   }
 
-  // Determine category
-  if (text.includes('rescue') || text.includes('trapped') || text.includes('stuck')) {
-    category = 'rescue';
-    resources = ['Rescue Team', 'Fire Department', 'Heavy Equipment'];
-  } else if (text.includes('medical') || text.includes('injured') || text.includes('sick') || text.includes('health')) {
-    category = 'medical';
-    resources = ['Ambulance', 'Medical Team', 'First Aid Kit'];
-  } else if (text.includes('food') || text.includes('hungry') || text.includes('water')) {
-    category = 'food';
-    resources = ['Food Supplies', 'Water', 'Distribution Team'];
-  } else if (text.includes('shelter') || text.includes('homeless') || text.includes('housing')) {
-    category = 'shelter';
-    resources = ['Temporary Housing', 'Blankets', 'Tent'];
-  }
-
-  const confidence = Math.floor(Math.random() * 15) + 85; // 85-100%
-
-  return {
-    urgency,
-    category,
-    summary: `AI-detected ${urgency} ${category} situation requiring immediate ${urgency === 'critical' ? 'emergency' : 'standard'} response protocol.`,
-    resources,
-    confidence,
-  };
+  return res.json();
 };
 
-// Sample incidents for the map
+/* ================= RANDOM LOCATION (DEMO ONLY) ================= */
 const generateRandomLocation = () => ({
-  lat: (Math.random() * 160) - 80, // Global Lat
-  lng: (Math.random() * 360) - 180, // Global Lng
+  lat: (Math.random() * 160) - 80,
+  lng: (Math.random() * 360) - 180,
 });
 
-const sampleIncidents: Incident[] = [
-  {
-    id: '1',
-    description: 'Earthquake aftermath in Tokyo',
-    urgency: 'critical',
-    category: 'rescue',
-    summary: 'Building structural integrity compromised',
-    resources: ['Rescue Team', 'Engineering Unit'],
-    confidence: 95,
-    location: { lat: 35.6762, lng: 139.6503 }, // Tokyo
-    timestamp: new Date(),
-    userId: 'user-2',
-  },
-  {
-    id: '2',
-    description: 'Medical emergency in New York',
-    urgency: 'medium',
-    category: 'medical',
-    summary: 'Multiple injuries reported in subway',
-    resources: ['Ambulance', 'Paramedics'],
-    confidence: 88,
-    location: { lat: 40.7128, lng: -74.0060 }, // NYC
-    timestamp: new Date(),
-    userId: 'user-1',
-  },
-  {
-    id: '3',
-    description: 'Flood warning in London',
-    urgency: 'safe',
-    category: 'shelter',
-    summary: 'Thames barrier raised, shelters open',
-    resources: ['Volunteers', 'Boats'],
-    confidence: 92,
-    location: { lat: 51.5074, lng: -0.1278 }, // London
-    timestamp: new Date(),
-    userId: 'user-2',
-  },
-  {
-    id: '4',
-    description: 'Forest fire in Sydney outskirts',
-    urgency: 'critical',
-    category: 'rescue',
-    summary: 'Evacuation order for northern suburbs',
-    resources: ['Fire Department', 'Aerial Support'],
-    confidence: 90,
-    location: { lat: -33.8688, lng: 151.2093 }, // Sydney
-    timestamp: new Date(),
-    userId: 'user-1',
-  },
-];
-
 export default function App() {
-  const [incidents, setIncidents] = useState<Incident[]>(sampleIncidents);
+  // Initialize with empty array, data will come from Firestore
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [currentAnalysis, setCurrentAnalysis] = useState<AIAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history'>('dashboard');
+  const [isAiMaximized, setIsAiMaximized] = useState(false);
 
-  // Admin State
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  // Geolocation State
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'detecting' | 'detected' | 'denied' | 'unavailable'>('detecting');
+  const [locationStatus, setLocationStatus] =
+    useState<'detecting' | 'detected' | 'denied' | 'unavailable'>('detecting');
 
-  // Get user's geolocation
+  /* ================= FIRESTORE SYNC ================= */
+  // This useEffect replaces your sampleIncidents
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-          setLocationStatus('detected');
-          console.log('📍 Location detected:', position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          console.warn('Geolocation error:', error.message);
-          if (error.code === error.PERMISSION_DENIED) {
-            setLocationStatus('denied');
-          } else {
-            setLocationStatus('unavailable');
-          }
-          // Fallback to random location
-          setUserLocation(generateRandomLocation());
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
-      );
-    } else {
-      console.warn('Geolocation not supported');
-      setLocationStatus('unavailable');
-      setUserLocation(generateRandomLocation());
-    }
+    // Query incidents collection, ordered by latest first
+    const q = query(collection(db, "incidents"), orderBy("timestamp", "desc"));
+
+    // Real-time listener
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedIncidents = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Convert Firestore Timestamp to JS Date
+          timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(),
+        } as Incident;
+      });
+      setIncidents(fetchedIncidents);
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, []);
 
-  // Filter incidents based on role
-  const filteredIncidents = useMemo(() => {
-    if (isAdmin) return incidents;
-    return incidents.filter(i => i.userId === CURRENT_USER_ID);
-  }, [incidents, isAdmin]);
+  /* ================= GEOLOCATION ================= */
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus('unavailable');
+      setUserLocation(generateRandomLocation());
+      return;
+    }
 
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        setLocationStatus('detected');
+      },
+      () => {
+        setLocationStatus('denied');
+        setUserLocation(generateRandomLocation());
+      },
+      { enableHighAccuracy: true }
+    );
+  }, []);
+
+  /* ================= ANALYZE REQUEST ================= */
   const handleAnalyze = useCallback(async (description: string) => {
+    if (!userLocation) {
+      alert('Waiting for location detection. Please try again.');
+      return;
+    }
+
     setIsAnalyzing(true);
     setCurrentAnalysis(null);
 
     try {
-      const result = await mockAIAnalysis(description);
+      // 1. Analyze with your Python/Node backend
+      const result = await analyzeWithBackend(description);
       setCurrentAnalysis(result);
 
-      // Add new incident to map
-      const newIncident: Incident = {
-        id: Date.now().toString(),
+      // 2. Prepare data for Firestore
+      // Note: We don't manually add 'id', Firestore generates it
+      const newIncidentData = {
         description,
-        urgency: result.urgency,
-        category: result.category,
+        urgency: result.urgency.toLowerCase(),
+        category: result.category.toLowerCase(),
         summary: result.summary,
         resources: result.resources,
-        confidence: result.confidence,
-        location: userLocation || generateRandomLocation(), // Use real location if available
-        timestamp: new Date(),
-        userId: CURRENT_USER_ID, // Assigned to current user
+        confidence: Math.round(result.confidence * 100),
+        location: userLocation,
+        timestamp: serverTimestamp(), // Use server time for consistency
+        userId: CURRENT_USER_ID,
       };
 
-      setIncidents((prev: Incident[]) => [newIncident, ...prev]);
-    } catch (error) {
-      console.error('Analysis failed:', error);
+      // 3. Write to Firestore
+      await addDoc(collection(db, "incidents"), newIncidentData);
+
+      // Note: We do NOT need to setIncidents here manually.
+      // The onSnapshot in the useEffect will detect the change and update the UI automatically.
+
+    } catch (err) {
+      console.error('Error processing incident:', err);
+      alert('Service unavailable or Database Error');
     } finally {
       setIsAnalyzing(false);
     }
-  }, []);
+  }, [userLocation]);
 
-  const handleIncidentClick = useCallback((incident: Incident) => {
-    setSelectedIncident(incident);
-    setCurrentAnalysis({
-      urgency: incident.urgency,
-      category: incident.category,
-      summary: incident.summary,
-      resources: incident.resources,
-      confidence: incident.confidence,
-      userId: incident.userId, // Although not strictly in AIAnalysisResult, keeping it clean
-    } as any); // Type assertion for now if needed, or better, just pass relevant fields
-  }, []);
-
-  // Calculate stats based on FILTERED incidents
-  // ... (stats calculation moved below)
-
-  const handleDeleteIncident = useCallback((id: string) => {
+  /* ================= ACTION HANDLERS ================= */
+  const handleDeleteIncident = useCallback(async (id: string) => {
     if (window.confirm('Are you sure you want to delete this incident?')) {
-      setIncidents(prev => prev.filter(i => i.id !== id));
-      if (selectedIncident?.id === id) {
-        setSelectedIncident(null);
+      try {
+        await deleteDoc(doc(db, "incidents", id));
+        // No need to manual filter, snapshot listener will handle it
+        if (selectedIncident?.id === id) {
+          setSelectedIncident(null);
+        }
+      } catch (error) {
+        console.error("Error deleting incident:", error);
+        alert("Failed to delete incident");
       }
     }
   }, [selectedIncident]);
@@ -223,34 +172,36 @@ export default function App() {
   const handleViewOnMap = useCallback((incident: Incident) => {
     setActiveTab('dashboard');
     setSelectedIncident(incident);
-    // Optionally trigger a recenter via state or context if needed, 
-    // but `selectedIncident` usually triggers a flyTo if the map listens to it.
-    // We'll need to make sure LeafletMapView listens to selectedIncident changes or we can pass a "focus" flag.
-    // For now, selecting it is a good start. 
+    setIsAiMaximized(false); // Ensure map is visible
   }, []);
 
   const handleViewDetails = useCallback((incident: Incident) => {
-    // For now, details are sufficiently shown in the map/sidebar, so we'll just select it
-    setSelectedIncident(incident);
-    // If in admin view, we might want to just show a modal? 
-    // For this iteration, let's switch to dashboard to see it on the right panel (if connected).
-    // Actually, the request was "View Details". 
-    // Let's implement a simple details modal or just reuse the logic.
-    // The simplest flow for "View Details" in this app structure is to show it on the Dashboard analysis panel.
     setActiveTab('dashboard');
+    setSelectedIncident(incident);
+    setIsAiMaximized(true); // Open in customized AI Focus Mode
   }, []);
 
-  // Calculate stats based on FILTERED incidents
-  const criticalCount = filteredIncidents.filter((i: Incident) => i.urgency === 'critical').length;
-  const mediumCount = filteredIncidents.filter((i: Incident) => i.urgency === 'medium').length;
-  const safeCount = filteredIncidents.filter((i: Incident) => i.urgency === 'safe').length;
-  const avgConfidence = filteredIncidents.length > 0
-    ? Math.round(filteredIncidents.reduce((sum: number, i: Incident) => sum + i.confidence, 0) / filteredIncidents.length)
-    : 0;
+  /* ================= FILTERING ================= */
+  const filteredIncidents = useMemo(() => {
+    return isAdmin
+      ? incidents
+      : incidents.filter((i) => i.userId === CURRENT_USER_ID);
+  }, [incidents, isAdmin]);
 
-  const handleLogin = (role: 'user' | 'admin') => {
-    setIsAdmin(role === 'admin');
-  };
+  /* ================= STATS ================= */
+  const criticalCount = filteredIncidents.filter(i => i.urgency === 'critical').length;
+  const highCount = filteredIncidents.filter(i => i.urgency === 'high').length;
+  const mediumCount = filteredIncidents.filter(i => i.urgency === 'medium').length;
+  const lowCount = filteredIncidents.filter(i => i.urgency === 'low').length;
+  const safeCount = filteredIncidents.filter(i => i.urgency === 'safe').length;
+
+  const avgConfidence =
+    filteredIncidents.length > 0
+      ? Math.round(
+        filteredIncidents.reduce((sum, i) => sum + i.confidence, 0) /
+        filteredIncidents.length
+      )
+      : 0;
 
   return (
     <>
@@ -263,17 +214,21 @@ export default function App() {
         {activeTab === 'dashboard' ? (
           <DashboardView
             criticalCount={criticalCount}
+            highCount={highCount}
             mediumCount={mediumCount}
+            lowCount={lowCount}
             safeCount={safeCount}
             avgConfidence={avgConfidence}
             incidents={filteredIncidents}
-            onIncidentClick={handleIncidentClick}
+            onIncidentClick={setSelectedIncident}
             onAnalyze={handleAnalyze}
             isAnalyzing={isAnalyzing}
             currentAnalysis={currentAnalysis}
             locationStatus={locationStatus}
             userLocation={userLocation}
             onLocationUpdate={setUserLocation}
+            isAiMaximized={isAiMaximized}
+            onToggleAiMaximized={() => setIsAiMaximized(!isAiMaximized)}
           />
         ) : (
           isAdmin ? (
@@ -284,7 +239,12 @@ export default function App() {
               onViewDetails={handleViewDetails}
             />
           ) : (
-            <HistoryView incidents={filteredIncidents} />
+            <HistoryView
+              incidents={filteredIncidents}
+              onDelete={handleDeleteIncident}
+              onViewOnMap={handleViewOnMap}
+              onViewDetails={handleViewDetails}
+            />
           )
         )}
       </Layout>
@@ -292,7 +252,7 @@ export default function App() {
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
-        onLogin={handleLogin}
+        onLogin={(role) => setIsAdmin(role === 'admin')}
       />
     </>
   );

@@ -30,14 +30,32 @@ export function AIResponseCard({ result }: AIResponseCardProps) {
           bgGradient: 'from-red-500/20 to-red-600/10',
           label: 'CRITICAL',
         };
+      case 'high':
+        return {
+          icon: AlertTriangle,
+          color: 'bg-orange-600',
+          textColor: 'text-orange-500',
+          borderColor: 'border-orange-600/50',
+          bgGradient: 'from-orange-600/20 to-orange-700/10',
+          label: 'HIGH',
+        };
       case 'medium':
         return {
           icon: Activity,
-          color: 'bg-orange-500',
-          textColor: 'text-orange-400',
-          borderColor: 'border-orange-500/50',
-          bgGradient: 'from-orange-500/20 to-orange-600/10',
+          color: 'bg-yellow-500',
+          textColor: 'text-yellow-400',
+          borderColor: 'border-yellow-500/50',
+          bgGradient: 'from-yellow-500/20 to-yellow-600/10',
           label: 'MEDIUM',
+        };
+      case 'low':
+        return {
+          icon: Info,
+          color: 'bg-blue-500',
+          textColor: 'text-blue-400',
+          borderColor: 'border-blue-500/50',
+          bgGradient: 'from-blue-500/20 to-blue-600/10',
+          label: 'LOW',
         };
       case 'safe':
         return {
@@ -126,14 +144,14 @@ export function AIResponseCard({ result }: AIResponseCardProps) {
       </div>
 
       {/* Confidence Score */}
+      {/* Confidence Score */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
             AI Confidence
           </h3>
-          <span className="text-lg font-bold text-blue-400 tabular-nums">{result.confidence}%</span>
+          <span className="text-lg font-bold text-blue-400 tabular-nums">{Math.round(result.confidence * 100)}%</span>
         </div>
-        <Progress value={result.confidence} className="h-2" />
         <p className="text-xs text-slate-400 mt-2">
           AI prediction accuracy based on analysis
         </p>

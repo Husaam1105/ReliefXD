@@ -10,7 +10,9 @@ import { motion } from 'motion/react';
 
 interface DashboardViewProps {
     criticalCount: number;
+    highCount: number;
     mediumCount: number;
+    lowCount: number;
     safeCount: number;
     avgConfidence: number;
     incidents: Incident[];
@@ -21,11 +23,15 @@ interface DashboardViewProps {
     locationStatus?: 'detecting' | 'detected' | 'denied' | 'unavailable';
     userLocation?: { lat: number; lng: number } | null;
     onLocationUpdate?: (location: { lat: number; lng: number }) => void;
+    isAiMaximized?: boolean;
+    onToggleAiMaximized?: () => void;
 }
 
 export function DashboardView({
     criticalCount,
+    highCount,
     mediumCount,
+    lowCount,
     safeCount,
     avgConfidence,
     incidents,
@@ -35,21 +41,22 @@ export function DashboardView({
     currentAnalysis,
     locationStatus,
     userLocation,
-    onLocationUpdate
+    onLocationUpdate,
+    isAiMaximized = false,
+    onToggleAiMaximized
 }: DashboardViewProps) {
     // State for View Mode (Map or Globe)
     const [viewMode, setViewMode] = useState<'map' | 'globe'>('map');
-    // State for AI Panel Maximize
-    const [isAiMaximized, setIsAiMaximized] = useState(false);
 
     return (
         <div className="flex flex-col h-full gap-6">
-            {/* Top Stats Row - Hide when AI is maximized to focus attention, or keep? Let's keep it. */}
-            {/* Actually hiding it might be cleaner for "Focus Mode". Let's hide it. */}
+            {/* Top Stats Row */}
             {!isAiMaximized && (
                 <LiveStatsCard
                     criticalCount={criticalCount}
+                    highCount={highCount}
                     mediumCount={mediumCount}
+                    lowCount={lowCount}
                     safeCount={safeCount}
                     aiConfidence={avgConfidence}
                 />
@@ -110,7 +117,7 @@ export function DashboardView({
                             <h3 className="font-semibold text-white">AI Command Center</h3>
                         </div>
                         <button
-                            onClick={() => setIsAiMaximized(!isAiMaximized)}
+                            onClick={onToggleAiMaximized}
                             className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-lg flex items-center gap-2 group"
                             title={isAiMaximized ? "Minimize View" : "Focus Mode"}
                         >

@@ -156,7 +156,7 @@ export function GlobeView({ className, incidents, userLocation, locationStatus }
                 <h3 className="text-white font-bold text-lg">Global Live View</h3>
                 <p className="text-slate-400 text-xs">Red Markers = Active Incidents</p>
                 <p className="text-blue-400 text-xs mt-1 font-mono">
-                    Monitor Active: {markers.length}
+                    Monitor Active: {markers.length-1}
                 </p>
             </div>
 

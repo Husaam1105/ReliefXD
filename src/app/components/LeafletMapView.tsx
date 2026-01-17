@@ -17,8 +17,12 @@ const getMarkerColor = (urgency: Incident['urgency']) => {
     switch (urgency) {
         case 'critical':
             return '#ef4444'; // red-500
+        case 'high':
+            return '#ea580c'; // orange-600
         case 'medium':
-            return '#f97316'; // orange-500
+            return '#eab308'; // yellow-500
+        case 'low':
+            return '#3b82f6'; // blue-500
         case 'safe':
             return '#22c55e'; // green-500
         default:
