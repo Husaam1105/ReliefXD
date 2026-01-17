@@ -27,7 +27,7 @@ const CURRENT_USER_ID = 'user-1';
 const analyzeWithBackend = async (
   description: string
 ): Promise<AIAnalysisResult> => {
-  const res = await fetch('http://localhost:5000/api/analyze', {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ description }),
